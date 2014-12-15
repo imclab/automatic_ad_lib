@@ -22,13 +22,7 @@
 
 #include <Process.h>
 #include <AccelStepper.h>
-#include <Bridge.h>
-#include <YunServer.h>
-#include <YunClient.h>
-
-// Listen on default port 5555, the webserver on the Yun
-// will forward there all the HTTP requests for us.
-YunServer server;
+#include <Mailbox.h>
 
 Process date;                 // process used to get the date
 int hours, minutes, seconds;  // for the results
@@ -100,15 +94,10 @@ int randoCenterCard[] = {0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 
 
 void setup() {
   Bridge.begin();        // initialize Bridge
-  Serial.begin(9600);    // initialize serial
+  Console.begin();
   
-  // Listen for incoming connection only from localhost
-  // (no one from the external network could connect)
-  server.listenOnLocalhost();
-  server.begin();
-
-//  while (!Serial);              // wait for Serial Monitor to open
-  Serial.println("Automatic Automata");  // Title of sketch
+  while (!Console);
+  Console.println("Automatic Automata");  // Title of sketch
 
   // run an initial date process. Should return:
   // hh:mm:ss :
@@ -156,23 +145,26 @@ void setup() {
 
 void loop() {
   
-//    // Get clients coming from server
-//  YunClient client = server.accept();
-//
-//  // There is a new client?
-//  if (client) {
-//    // Process request
-//    process(client);
-//
-//    // Close connection and free resources.
-//    client.stop();
-//  }
+String message;
+
+  // if there is a message in the Mailbox
+  if (Mailbox.messageAvailable())
+  {
+    // read all the messages present in the queue
+    while (Mailbox.messageAvailable())
+    {
+      Mailbox.readMessage(message);
+      Serial.println(message);
+    }
+
+    Console.println("Waiting 10 seconds before checking the Mailbox again");
+  }
 
 
   // select random cards not including numbers, and choose an operator for middle card (serialCard2)
   serialCard0 = randoSerialCard[random(0, 45)];
   serialCard1 = randoSerialCard[random(0, 45)];
-  serialCard2 = randoCenterCard[random(0, 
+  serialCard2 = random(0,20); 
   serialCard3 = randoSerialCard[random(0, 45)];
   serialCard4 = randoSerialCard[random(0, 45)];
 
@@ -538,115 +530,3 @@ void getTime() {
   }
 
 }
-
-//void process(YunClient client) {
-//  // read the command
-//  String command = client.readStringUntil('/');
-//
-//  if (command == "calibrate") {
-//    calibrateRequest(client);
-//  }
-//
-//  if (command == "setmmanually") {
-//    setmManually(client);
-//  }
-//  
-//  if (command == "auto") {
-//    changeMode(client);
-//  }
-//  
-//}
-//
-//void calibrateRequest (YunClient client) {
-//  int board;
-//
-//  // Read pin number
-//  board = client.parseInt();
-//  
-//  // Send feedback to client
-//  client.print(F("Display "));
-//  client.print(board);
-//  client.println(F(" set to calibrate. Please wait"));
-//  
-//  if (board < 5){
-//    stopAll();
-//    calibrate(board, board);
-//  }
-//}
-//
-//void setmManually(YunClient client) {
-//  int displayNum;
-//
-//  // Read pin number
-//  displayNum = client.parseInt();
-//
-//  // If the next character is not a '/' we have a malformed URL
-//  if (client.read() != '/') {
-//    client.println(F("error"));
-//    return;
-//  }
-//
-//  String card = client.readStringUntil('\r');
-//
-//  switch (displayNum) {
-//    case 0:
-//      serialCard0 = card.toInt();
-//      break;
-//    case 1:
-//      serialCard1 = card.toInt();
-//      break;
-//    case 2:
-//      serialCard2 = card.toInt();
-//      break;
-//    case 3:
-//      serialCard3 = card.toInt();
-//      break;
-//    case 4:
-//      serialCard4 = card.toInt();
-//      break;
-//  }
-//    
-//    // Send feedback to client
-//    client.print(F("Display "));
-//    client.print(displayNum);
-//    client.print(F(" Set to card:"));
-//    client.println(card);
-//    return;
-//  }
-//
-//  client.print(F("error: invalid display or card"));
-//  client.print(mode);
-//}
-//
-//void calibrateRequest (YunClient client) {
-//  int board;
-//
-//  // Read pin number
-//  board = client.parseInt();
-//  
-//  if (board < 5){
-//    stopAll();
-//    calibrate(board, board);
-//
-//  // Send feedback to client
-//  client.print(F("Display "));
-//  client.print(board);
-//  client.println(F(" set to calibrate. Please wait"));
-//
-////  // Update datastore key with the current pin value
-////  String key = "D";
-////  key += pin;
-////  Bridge.put(key, String(value));
-//}
-//
-//void changeMode (YunClient client) {
-//
-//  
-//  // Send feedback to client
-//  client.print(F("Not implemented "));
-//}
-//
-//
-//void stopAll(){
-//  
-//}
