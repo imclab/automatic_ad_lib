@@ -6,6 +6,8 @@
  Tom Arthur
  ITP Automata 2014 Fall
 
+ Show-ReFix after failed save last night of awesomeness
+
  Includes public domain code by Tom Igoe:
  Time Check
 
@@ -31,8 +33,8 @@ int lastSecond = -1;          // need an impossible value for comparison
 int lastMinute = -1;          // last minute for use with cards
 int lastDisplayedTime = -2;   // last time displayed on cards
 
-int motorSpeed = 5000;        //maximum steps per second (about 3rps / at 16 microsteps)
-int motorAccel = 3000;        //steps/second/second to accelerate
+int motorSpeed = 2000;        //maximum steps per second (about 3rps / at 16 microsteps)
+int motorAccel = 1600;        //steps/second/second to accelerate
 
 const int ledPin =  13;       // the number of the LED pin
 
@@ -88,15 +90,13 @@ int nextCard4 = 0;
 int currentCard4 = 0;
 int stepperCard4 = 0;
 AccelStepper stepper4(1, motorStepPin4, motorDirPin);    // flip5
-
-int randoSerialCard[] = {11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44};
-int randoCenterCard[] = {0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44};
+int networkState;
 
 void setup() {
   Bridge.begin();        // initialize Bridge
   Console.begin();
-  
-  while (!Console);
+
+  //  while (!Console);
   Console.println("Automatic Automata");  // Title of sketch
 
   // run an initial date process. Should return:
@@ -141,11 +141,13 @@ void setup() {
   calibrate(stepper2, 2);
   calibrate(stepper3, 3);
   calibrate(stepper4, 4);
+
+  networkState = 3;
 }
 
 void loop() {
-  
-String message;
+
+  String message;
 
   // if there is a message in the Mailbox
   if (Mailbox.messageAvailable())
@@ -155,90 +157,173 @@ String message;
     {
       Mailbox.readMessage(message);
       Serial.println(message);
+
+      if (message.startsWith("calibrate")) {
+          if (message.endsWith("1")){
+            calibrate(stepper0, 0);
+            currentCard0 = 0;
+          }
+          else if (message.endsWith("2")) {
+            calibrate(stepper1, 1);
+            currentCard1 = 0;
+          }
+          else if (message.endsWith("3")) {
+            calibrate(stepper2, 2);
+            currentCard2 = 0;
+          }          
+          else if (message.endsWith("4")) {
+            calibrate(stepper3, 3);
+            currentCard3 = 0;
+          }
+          else if (message.endsWith("5")) {
+            calibrate(stepper4, 4);
+            currentCard4 = 0;
+          }
+          else {
+            Console.println("not valid");
+          }         
+        //reset current card
+        networkState = 2;
+      }
+      else if (message.startsWith("stop")) {
+        Console.println("Stopped cycle");
+        networkState = 1;
+      }
+      else if (message.startsWith("auto")) {
+        Console.println("Auto mode");
+        randomSeed(analogRead(2));
+        networkState = 3;
+      }
+      else if (message.startsWith("goto")) {
+        Console.println("Go to mode");
+        networkState = 1;
+        //goto1,2,1,3,3
+        int commaIndex = message.indexOf(',');
+        int secondCommaIndex = message.indexOf(',', commaIndex+1);
+        int thirdCommaIndex = message.indexOf(',', secondCommaIndex+1);
+        int fourthCommaIndex = message.indexOf(',', thirdCommaIndex+1);
+        
+        String card0net = message.substring(4, commaIndex);
+        String card1net = message.substring(commaIndex+1, secondCommaIndex);
+        String card2net = message.substring(secondCommaIndex+1, thirdCommaIndex); // To the end of the string
+        String card3net = message.substring(thirdCommaIndex+1, fourthCommaIndex);
+        String card4net = message.substring(fourthCommaIndex+1); // To the end of the string
+        
+        serialCard0 = card0net.toInt();
+        serialCard1 = card1net.toInt();
+        serialCard2 = card2net.toInt();
+        serialCard3 = card3net.toInt();
+        serialCard4 = card4net.toInt();
+
+
+      } else if (message.startsWith("blank")){
+        Console.println("Go away!");
+        networkState = 2;
+      }
+      else {
+        Console.println("Invalid message");
+      }
     }
 
-    Console.println("Waiting 10 seconds before checking the Mailbox again");
   }
 
-
-  // select random cards not including numbers, and choose an operator for middle card (serialCard2)
-  serialCard0 = randoSerialCard[random(0, 45)];
-  serialCard1 = randoSerialCard[random(0, 45)];
-  serialCard2 = random(0,20); 
-  serialCard3 = randoSerialCard[random(0, 45)];
-  serialCard4 = randoSerialCard[random(0, 45)];
-
-
-  if (state == 0) {                   // delay
-    getTime();                        // get new time during wait period, this will add an interminate amout of delay
-    delay(9000);
-    Serial.println("time to display random cards");
-    if (lastDisplayedTime != lastMinute) {
-      state = 2;
-    } else {
-      state = 1;
-    }
+  if (networkState == 1) {
+    // do nothing
 
   }
-  else if (state == 1) {              // set next turn for blank display
-    Serial.println("time to display 0s");
-    delay(9000);
+  else if (networkState == 2) {
 
+    // go to 0 and wait
     serialCard0 = 0;
     serialCard1 = 0;
     serialCard2 = 0;
     serialCard3 = 0;
     serialCard4 = 0;
 
-    state = 0;
-
   }
-  else if (state == 2) {             // display time
-    delay(9000);
-    Serial.println("time to display time");
-
-    String tempHours0, tempHours1, tempMin0, tempMin1;
-
-    tempHours0 = hourString.substring(0, 1);
-    tempHours1 = hourString.substring(1);
-
-    tempMin0 = minString.substring(0, 1);
-    tempMin1 = minString.substring(1);
-
-    Serial.println(hourString);
-    Serial.println(minString);
-    Serial.println("tempHours: ");
-    Serial.println(tempHours0);
-    Serial.println(tempHours1);
-    Serial.println(tempMin0);
-    Serial.println(tempMin1);
+  else if (networkState == 3) {
 
 
-    if (tempHours0 == 0 && tempHours1 == 0 && tempMin0 == 0 && tempMin1 == 0) {
-      serialCard0 = random(11, 44);
-      serialCard1 = random(11, 44);
-      serialCard2 = random(2, 13);
-      serialCard3 = random(11, 44);
-      serialCard4 = random(11, 44);
-      Serial.println("0 time so random cards");
-    } else {
-      serialCard0 = tempHours0.toInt() + 1;
-      serialCard1 = tempHours1.toInt() + 1;
-      serialCard2 = 1;
-      serialCard3 = tempMin0.toInt() + 2;
-      serialCard4 = tempMin1.toInt() + 1;
+    // select random cards not including numbers, and choose an operator for middle card (serialCard2)
+    serialCard0 = random(11, 44);
+    serialCard1 = random(11, 44);
+    serialCard2 = random(0, 39);
+    serialCard3 = random(12, 44);
+    serialCard4 = random(11, 44);
+
+
+    if (state == 0) {                   // delay
+      getTime();                        // get new time during wait period, this will add an interminate amout of delay
+      delay(9000);
+      Serial.println("time to display random cards");
+      if (lastDisplayedTime + 2 < lastMinute || lastDisplayedTime == 0 || lastDisplayedTime == -1) {
+        state = 2;
+      } else {
+        state = 1;
+      }
+
     }
+    else if (state == 1) {              // set next turn for blank display
+      Serial.println("time to display 0s");
+      delay(9000);
 
-    state = 1;
-    lastDisplayedTime = minutes;
+      serialCard0 = 0;
+      serialCard1 = 0;
+      serialCard2 = 0;
+      serialCard3 = 0;
+      serialCard4 = 0;
 
+      state = 0;
+
+    }
+    else if (state == 2) {             // display time
+      delay(9000);
+      Serial.println("time to display time");
+
+      String tempHours0, tempHours1, tempMin0, tempMin1;
+
+      tempHours0 = hourString.substring(0, 1);
+      tempHours1 = hourString.substring(1);
+
+      tempMin0 = minString.substring(0, 1);
+      tempMin1 = minString.substring(1);
+
+      Serial.println(hourString);
+      Serial.println(minString);
+      Serial.println("tempHours: ");
+      Serial.println(tempHours0);
+      Serial.println(tempHours1);
+      Serial.println(tempMin0);
+      Serial.println(tempMin1);
+
+
+      if (tempHours0 == 0 && tempHours1 == 0 && tempMin0 == 0 && tempMin1 == 0) {
+        serialCard0 = random(11, 44);
+        serialCard1 = random(11, 44);
+        serialCard2 = random(2, 13);
+        serialCard3 = random(11, 44);
+        serialCard4 = random(11, 44);
+        Serial.println("0 time so random cards");
+      } else {
+        serialCard0 = tempHours0.toInt() + 1;
+        serialCard1 = tempHours1.toInt() + 1;
+        serialCard2 = 1;
+        serialCard3 = tempMin0.toInt() + 2;
+        serialCard4 = tempMin1.toInt() + 1;
+      }
+
+      state = 1;
+      lastDisplayedTime = minutes;
+
+    }
   }
 
-  serialCard0 = constrain(serialCard0, 0, 40);
-  serialCard1 = constrain(serialCard1, 0, 44);
+
+  serialCard0 = constrain(serialCard0, 0, 45);
+  serialCard1 = constrain(serialCard1, 0, 45);
   serialCard2 = constrain(serialCard2, 0, 40);
-  serialCard3 = constrain(serialCard3, 0, 44);
-  serialCard4 = constrain(serialCard4, 0, 44);
+  serialCard3 = constrain(serialCard3, 0, 45);
+  serialCard4 = constrain(serialCard4, 0, 45);
 
   stepperCard0 = serialCard0 * 45;
   stepperCard1 = serialCard1 * 45;
