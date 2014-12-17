@@ -91,6 +91,7 @@ int currentCard4 = 0;
 int stepperCard4 = 0;
 AccelStepper stepper4(1, motorStepPin4, motorDirPin);    // flip5
 int networkState;
+int lastState; 
 
 void setup() {
   Bridge.begin();        // initialize Bridge
@@ -252,11 +253,13 @@ void loop() {
     serialCard4 = random(11, 44);
 
 
-    if (state == 0) {                   // delay
+    if (state == 0) {   
+      delay(5000);      // delay
       getTime();                        // get new time during wait period, this will add an interminate amout of delay
-      delay(9000);
+
       Serial.println("time to display random cards");
-      if (lastDisplayedTime + 2 < lastMinute || lastDisplayedTime == 0 || lastDisplayedTime == -1) {
+      int showTimeRandom = random(0, 1);
+      if (lastDisplayedTime != lastMinute && showTimeRandom == 1) {
         state = 2;
       } else {
         state = 1;
@@ -265,7 +268,7 @@ void loop() {
     }
     else if (state == 1) {              // set next turn for blank display
       Serial.println("time to display 0s");
-      delay(9000);
+      delay(12000);
 
       serialCard0 = 0;
       serialCard1 = 0;
@@ -277,7 +280,7 @@ void loop() {
 
     }
     else if (state == 2) {             // display time
-      delay(9000);
+      delay(5000);
       Serial.println("time to display time");
 
       String tempHours0, tempHours1, tempMin0, tempMin1;
